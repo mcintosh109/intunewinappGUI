@@ -1,3 +1,5 @@
+<img src="docs/icon.png" alt="IntuneWin Packager icon" width="128" align="right">
+
 # IntuneWin Packager
 
 A small Windows Forms front end for Microsoft's **IntuneWinAppUtil.exe**

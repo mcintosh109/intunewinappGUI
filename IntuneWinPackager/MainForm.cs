@@ -34,6 +34,11 @@ namespace IntuneWinPackager
             MinimumSize = new Size(700, 500);
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Segoe UI", 9F);
+            using (var iconStream = typeof(MainForm).Assembly.GetManifestResourceStream("IntuneWinPackager.app.ico"))
+            {
+                if (iconStream != null)
+                    Icon = new Icon(iconStream);
+            }
 
             BuildLayout();
 
