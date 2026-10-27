@@ -15,7 +15,8 @@ Pick an input folder and an output folder, tick the installers you want, and it 
    `.cmd` and `.bat` files (tick *Include subfolders* to search below it).
 4. **Output folder** – click *Select folder...* and pick where the `.intunewin` files go (you can make a new
    folder from the Explorer window, or drag one onto the box). If you skip this, you're asked when you compile.
-5. Tick the setup files you want and click **Compile selected**. Progress and the tool's output appear in the log.
+5. Tick the setup files you want (or tick **Select all**) and click **Compile selected**. Each ticked app is packaged
+   on its own, one after another, into its own `.intunewin` file. Progress and the tool's output appear in the log.
 
 Your folders are remembered between runs in `%APPDATA%\IntuneWinPackager\settings.txt`.
 
@@ -29,6 +30,9 @@ IntuneWinAppUtil.exe -c "<folder the setup file is in>" -s "<setup file>" -o "<o
 
 * `-c` is the setup file's own folder, so **everything in that folder (and its subfolders) goes into the package**.
 * The output keeps the input folder's layout, so two apps that both have a `setup.exe` don't overwrite each other.
+* Tick **Save all packages directly in the output folder** to get every `.intunewin` in one folder instead.
+  If two apps would get the same name, the app's folder is added in front, e.g. `Chrome - setup.intunewin`
+  and `Zoom - setup.intunewin`.
 * `-q` runs quietly and overwrites an existing `.intunewin` with the same name.
 
 A tidy input folder works best, one folder per app:

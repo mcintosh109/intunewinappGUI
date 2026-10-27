@@ -13,6 +13,7 @@ namespace IntuneWinPackager
         public string InputFolder { get; set; } = string.Empty;
         public string OutputFolder { get; set; } = string.Empty;
         public bool IncludeSubfolders { get; set; } = true;
+        public bool FlatOutput { get; set; }
 
         static string SettingsFile
         {
@@ -44,6 +45,7 @@ namespace IntuneWinPackager
                 if (values.TryGetValue("InputFolder", out value)) settings.InputFolder = value;
                 if (values.TryGetValue("OutputFolder", out value)) settings.OutputFolder = value;
                 if (values.TryGetValue("IncludeSubfolders", out value)) settings.IncludeSubfolders = value != "False";
+                if (values.TryGetValue("FlatOutput", out value)) settings.FlatOutput = value == "True";
             }
             catch (IOException)
             {
@@ -62,7 +64,8 @@ namespace IntuneWinPackager
                     "ToolPath=" + ToolPath,
                     "InputFolder=" + InputFolder,
                     "OutputFolder=" + OutputFolder,
-                    "IncludeSubfolders=" + IncludeSubfolders
+                    "IncludeSubfolders=" + IncludeSubfolders,
+                    "FlatOutput=" + FlatOutput
                 });
             }
             catch (IOException)

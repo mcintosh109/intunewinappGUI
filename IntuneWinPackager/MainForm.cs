@@ -16,6 +16,8 @@ namespace IntuneWinPackager
         TextBox txtInput;
         TextBox txtOutput;
         CheckBox chkSubfolders;
+        CheckBox chkSelectAll;
+        CheckBox chkFlatOutput;
         Label lblCount;
         ListView lstApps;
         Button btnCompile;
@@ -41,6 +43,7 @@ namespace IntuneWinPackager
             txtOutput.Text = settings.OutputFolder;
             chkSubfolders.Checked = settings.IncludeSubfolders;
             chkSubfolders.CheckedChanged += (s, e) => ScanInputFolder();
+            chkFlatOutput.Checked = settings.FlatOutput;
 
             Shown += (s, e) =>
             {
@@ -93,9 +96,13 @@ namespace IntuneWinPackager
             var options = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0), WrapContents = false };
             chkSubfolders = new CheckBox { Text = "Include subfolders", AutoSize = true, Margin = new Padding(3, 7, 12, 3) };
             lblCount = new Label { AutoSize = true, Margin = new Padding(12, 8, 3, 3) };
+            // AutoCheck is off so a click always means "select all" unless everything is already selected.
+            chkSelectAll = new CheckBox { Text = "Select all", AutoSize = true, AutoCheck = false, Margin = new Padding(3, 7, 12, 3) };
+            chkSelectAll.Click += (s, e) => SetAllChecked(lstApps.CheckedItems.Count < lstApps.Items.Count);
+            chkFlatOutput = new CheckBox { Text = "Save all packages directly in the output folder", AutoSize = true, Margin = new Padding(3, 7, 12, 3) };
+            options.Controls.Add(chkSelectAll);
             options.Controls.Add(chkSubfolders);
-            options.Controls.Add(MakeButton("Select all", (s, e) => SetAllChecked(true)));
-            options.Controls.Add(MakeButton("Select none", (s, e) => SetAllChecked(false)));
+            options.Controls.Add(chkFlatOutput);
             options.Controls.Add(lblCount);
             layout.Controls.Add(options, 0, 3);
             layout.SetColumnSpan(options, 4);
@@ -308,7 +315,12 @@ namespace IntuneWinPackager
 
         void UpdateCount()
         {
-            lblCount.Text = string.Format("{0} found, {1} selected", lstApps.Items.Count, lstApps.CheckedItems.Count);
+            int found = lstApps.Items.Count;
+            int selected = lstApps.CheckedItems.Count;
+            lblCount.Text = string.Format("{0} found, {1} selected", found, selected);
+            chkSelectAll.CheckState = selected == 0 ? CheckState.Unchecked
+                : selected == found ? CheckState.Checked
+                : CheckState.Indeterminate;
             btnCompile.Enabled = !busy && lstApps.CheckedItems.Count > 0;
         }
 
@@ -341,6 +353,10 @@ namespace IntuneWinPackager
             SaveSettings();
             SetBusy(true, selected.Count);
 
+            bool flat = chkFlatOutput.Checked;
+            var flatNames = flat ? GetFlatOutputNames(selected) : null;
+            string workFolder = Path.Combine(output, ".packaging");
+
             var created = new List<string>();
             var failed = new List<string>();
             try
@@ -352,12 +368,27 @@ namespace IntuneWinPackager
                     if (setup.RelativeFolder.Length == 0 && chkSubfolders.Checked)
                         Log("  Note: this file is in the input folder root, so the WHOLE input folder (including subfolders) will be packaged with it.");
 
-                    // Keep each app in its own output subfolder so files called e.g. setup.exe don't overwrite each other.
-                    string appOutput = Path.Combine(output, setup.RelativeFolder);
+                    // By default each app keeps its own output subfolder so files called e.g. setup.exe don't overwrite
+                    // each other. In flat mode clashing names are built in a work folder and then renamed.
+                    string defaultName = Path.GetFileNameWithoutExtension(setup.FileName) + ".intunewin";
+                    string flatName = flat ? flatNames[setup] : null;
+                    bool rename = flat && flatName != defaultName;
+                    string appOutput = !flat ? Path.Combine(output, setup.RelativeFolder)
+                        : rename ? workFolder
+                        : output;
                     string result = null;
                     try
                     {
-                        result = await IntuneWinAppUtilRunner.PackageAsync(tool, setup, appOutput, LogFromAnyThread);
+                        string packaged = await IntuneWinAppUtilRunner.PackageAsync(tool, setup, appOutput, LogFromAnyThread);
+                        if (packaged != null && rename)
+                        {
+                            string target = Path.Combine(output, flatName);
+                            if (File.Exists(target))
+                                File.Delete(target);
+                            File.Move(packaged, target);
+                            packaged = target;
+                        }
+                        result = packaged;
                     }
                     catch (Exception ex)
                     {
@@ -378,6 +409,12 @@ namespace IntuneWinPackager
             }
             finally
             {
+                if (Directory.Exists(workFolder))
+                {
+                    try { Directory.Delete(workFolder, true); }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
+                }
                 SetBusy(false, 0);
             }
 
@@ -392,6 +429,35 @@ namespace IntuneWinPackager
                 Text, MessageBoxButtons.YesNo, icon);
             if (open == DialogResult.Yes)
                 OpenOutputFolder();
+        }
+
+        /// <summary>
+        /// Package names for "save all directly in the output folder". Names are normally the setup file's name;
+        /// when two selected apps would produce the same name, the app's folder is put in front,
+        /// e.g. "Chrome - setup.intunewin" and "Zoom - setup.intunewin".
+        /// </summary>
+        Dictionary<SetupFile, string> GetFlatOutputNames(List<SetupFile> selected)
+        {
+            string rootName = Path.GetFileName(txtInput.Text.Trim().TrimEnd('\\'));
+            var names = new Dictionary<SetupFile, string>();
+            foreach (var group in selected.GroupBy(f => Path.GetFileNameWithoutExtension(f.FileName), StringComparer.OrdinalIgnoreCase))
+            {
+                bool clash = group.Count() > 1;
+                foreach (SetupFile setup in group)
+                {
+                    string name = Path.GetFileNameWithoutExtension(setup.FileName);
+                    if (clash)
+                    {
+                        string folder = setup.RelativeFolder.Length > 0 ? setup.RelativeFolder.Replace("\\", " - ") : rootName;
+                        name = folder + " - " + name;
+                    }
+                    // Same name in the same folder, e.g. setup.exe and setup.msi.
+                    if (names.ContainsValue(name + ".intunewin"))
+                        name += " (" + setup.Extension + ")";
+                    names[setup] = name + ".intunewin";
+                }
+            }
+            return names;
         }
 
         void SetBusy(bool isBusy, int total)
@@ -436,6 +502,7 @@ namespace IntuneWinPackager
             settings.InputFolder = txtInput.Text.Trim();
             settings.OutputFolder = txtOutput.Text.Trim();
             settings.IncludeSubfolders = chkSubfolders.Checked;
+            settings.FlatOutput = chkFlatOutput.Checked;
             settings.Save();
         }
 
