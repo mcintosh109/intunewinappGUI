@@ -15,7 +15,8 @@ found automatically.
 Every push to `main` is also built by GitHub Actions; the build is attached to each run on the
 [Actions](../../actions) page.
 
-To publish a new release, push a version tag, e.g. `git tag v1.1.0 && git push origin v1.1.0`.
+To publish a new release, go to **Releases → Draft a new release**, type a new tag such as `v1.1.0`,
+and click **Publish release**. The build runs and attaches `IntuneWinPackager.zip` to the release.
 
 ## Usage
 
