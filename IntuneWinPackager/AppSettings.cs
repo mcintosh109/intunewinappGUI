@@ -14,6 +14,7 @@ namespace IntuneWinPackager
         public string OutputFolder { get; set; } = string.Empty;
         public bool IncludeSubfolders { get; set; } = true;
         public bool FlatOutput { get; set; }
+        public bool DarkMode { get; set; } = true;
 
         static string SettingsFile
         {
@@ -46,6 +47,7 @@ namespace IntuneWinPackager
                 if (values.TryGetValue("OutputFolder", out value)) settings.OutputFolder = value;
                 if (values.TryGetValue("IncludeSubfolders", out value)) settings.IncludeSubfolders = value != "False";
                 if (values.TryGetValue("FlatOutput", out value)) settings.FlatOutput = value == "True";
+                if (values.TryGetValue("DarkMode", out value)) settings.DarkMode = value != "False";
             }
             catch (IOException)
             {
@@ -65,7 +67,8 @@ namespace IntuneWinPackager
                     "InputFolder=" + InputFolder,
                     "OutputFolder=" + OutputFolder,
                     "IncludeSubfolders=" + IncludeSubfolders,
-                    "FlatOutput=" + FlatOutput
+                    "FlatOutput=" + FlatOutput,
+                    "DarkMode=" + DarkMode
                 });
             }
             catch (IOException)

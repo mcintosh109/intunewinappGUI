@@ -18,6 +18,7 @@ namespace IntuneWinPackager
         CheckBox chkSubfolders;
         CheckBox chkSelectAll;
         CheckBox chkFlatOutput;
+        CheckBox chkDarkMode;
         Label lblCount;
         ListView lstApps;
         Button btnCompile;
@@ -44,6 +45,9 @@ namespace IntuneWinPackager
             chkSubfolders.Checked = settings.IncludeSubfolders;
             chkSubfolders.CheckedChanged += (s, e) => ScanInputFolder();
             chkFlatOutput.Checked = settings.FlatOutput;
+            chkDarkMode.Checked = settings.DarkMode;
+            chkDarkMode.CheckedChanged += (s, e) => ApplyTheme();
+            Load += (s, e) => ApplyTheme();
 
             Shown += (s, e) =>
             {
@@ -95,7 +99,7 @@ namespace IntuneWinPackager
             // Row 3: list options
             var options = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0), WrapContents = false };
             chkSubfolders = new CheckBox { Text = "Include subfolders", AutoSize = true, Margin = new Padding(3, 7, 12, 3) };
-            lblCount = new Label { AutoSize = true, Margin = new Padding(12, 8, 3, 3) };
+            lblCount = new Label { AutoSize = true, Margin = new Padding(12, 8, 3, 3), Tag = "muted" };
             // AutoCheck is off so a click always means "select all" unless everything is already selected.
             chkSelectAll = new CheckBox { Text = "Select all", AutoSize = true, AutoCheck = false, Margin = new Padding(3, 7, 12, 3) };
             chkSelectAll.Click += (s, e) => SetAllChecked(lstApps.CheckedItems.Count < lstApps.Items.Count);
@@ -123,21 +127,27 @@ namespace IntuneWinPackager
             lstApps.Columns.Add("Folder (gets packaged)", 380);
             lstApps.Columns.Add("Size", 80, HorizontalAlignment.Right);
             lstApps.ItemChecked += (s, e) => UpdateCount();
+            // Stretch the last column to the edge so there's no unthemed strip of header after it.
+            lstApps.Resize += (s, e) => lstApps.Columns[lstApps.Columns.Count - 1].Width = -2;
             layout.Controls.Add(lstApps, 0, 4);
             layout.SetColumnSpan(lstApps, 4);
             EnableFolderDrop(lstApps, SetInputFolder);
             lockWhileBusy.Add(lstApps);
 
             // Row 5: compile button and progress
-            var actions = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 2, Margin = new Padding(0) };
+            var actions = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 3, Margin = new Padding(0) };
             actions.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            actions.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             btnCompile = MakeButton("Compile selected", (s, e) => CompileSelected());
             btnCompile.Font = new Font(Font, FontStyle.Bold);
             btnCompile.Padding = new Padding(8, 2, 8, 2);
+            btnCompile.EnabledChanged += (s, e) => Theme.StyleAccent(btnCompile);
             progress = new ProgressBar { Dock = DockStyle.Fill, Margin = new Padding(8, 6, 3, 6) };
             actions.Controls.Add(btnCompile, 0, 0);
             actions.Controls.Add(progress, 1, 0);
+            chkDarkMode = new CheckBox { Text = "Dark mode", AutoSize = true, Anchor = AnchorStyles.Right, Margin = new Padding(12, 6, 3, 3) };
+            actions.Controls.Add(chkDarkMode, 2, 0);
             layout.Controls.Add(actions, 0, 5);
             layout.SetColumnSpan(actions, 4);
 
@@ -460,6 +470,12 @@ namespace IntuneWinPackager
             return names;
         }
 
+        void ApplyTheme()
+        {
+            Theme.Apply(this, chkDarkMode.Checked);
+            Theme.StyleAccent(btnCompile);
+        }
+
         void SetBusy(bool isBusy, int total)
         {
             busy = isBusy;
@@ -503,6 +519,7 @@ namespace IntuneWinPackager
             settings.OutputFolder = txtOutput.Text.Trim();
             settings.IncludeSubfolders = chkSubfolders.Checked;
             settings.FlatOutput = chkFlatOutput.Checked;
+            settings.DarkMode = chkDarkMode.Checked;
             settings.Save();
         }
 

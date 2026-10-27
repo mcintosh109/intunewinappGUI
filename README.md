@@ -32,7 +32,9 @@ and click **Publish release**. The build runs and attaches `IntuneWinPackager.zi
 5. Tick the setup files you want (or tick **Select all**) and click **Compile selected**. Each ticked app is packaged
    on its own, one after another, into its own `.intunewin` file. Progress and the tool's output appear in the log.
 
-Your folders are remembered between runs in `%APPDATA%\IntuneWinPackager\settings.txt`.
+The program opens in dark mode; untick **Dark mode** (next to the progress bar) to switch to light mode.
+
+Your folders and choices are remembered between runs in `%APPDATA%\IntuneWinPackager\settings.txt`.
 
 ## How each app is packaged
 
