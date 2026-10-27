@@ -40,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppSettings.cs" />
+    <Compile Include="FolderPicker.cs" />
     <Compile Include="IntuneWinAppUtilRunner.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>

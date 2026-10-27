@@ -42,7 +42,14 @@ namespace IntuneWinPackager
             chkSubfolders.Checked = settings.IncludeSubfolders;
             chkSubfolders.CheckedChanged += (s, e) => ScanInputFolder();
 
-            Shown += (s, e) => ScanInputFolder();
+            Shown += (s, e) =>
+            {
+                Log("1. Input folder: click \"Select folder...\" and pick the folder that holds your installers (or drag it here from Explorer).");
+                Log("2. Output folder: click \"Select folder...\" and pick where the .intunewin files should be saved.");
+                Log("3. Tick the apps you want and click \"Compile selected\".");
+                Log("");
+                ScanInputFolder();
+            };
             FormClosing += OnFormClosing;
         }
 
@@ -66,17 +73,21 @@ namespace IntuneWinPackager
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 40F));
 
             // Row 0: IntuneWinAppUtil.exe
-            txtTool = AddPathRow(layout, 0, "IntuneWinAppUtil.exe:", BrowseTool,
+            txtTool = AddPathRow(layout, 0, "IntuneWinAppUtil.exe:", "Browse...", BrowseTool,
                 MakeButton("Download...", (s, e) => Process.Start(IntuneWinAppUtilRunner.DownloadUrl)));
 
             // Row 1: input folder
-            txtInput = AddPathRow(layout, 1, "Input folder:", (s, e) => BrowseFolder(txtInput, "Select the folder that contains your application installers", true),
+            txtInput = AddPathRow(layout, 1, "Input folder:", "Select folder...", (s, e) => PickInputFolder(),
                 MakeButton("Scan", (s, e) => ScanInputFolder()));
             txtInput.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; ScanInputFolder(); } };
 
             // Row 2: output folder
-            txtOutput = AddPathRow(layout, 2, "Output folder:", (s, e) => BrowseFolder(txtOutput, "Select where the .intunewin files should be saved", false),
+            txtOutput = AddPathRow(layout, 2, "Output folder:", "Select folder...", (s, e) => PickOutputFolder(),
                 MakeButton("Open", (s, e) => OpenOutputFolder()));
+
+            // Folders can also be dragged in from Explorer.
+            EnableFolderDrop(txtInput, SetInputFolder);
+            EnableFolderDrop(txtOutput, SetOutputFolder);
 
             // Row 3: list options
             var options = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0), WrapContents = false };
@@ -107,6 +118,7 @@ namespace IntuneWinPackager
             lstApps.ItemChecked += (s, e) => UpdateCount();
             layout.Controls.Add(lstApps, 0, 4);
             layout.SetColumnSpan(lstApps, 4);
+            EnableFolderDrop(lstApps, SetInputFolder);
             lockWhileBusy.Add(lstApps);
 
             // Row 5: compile button and progress
@@ -139,10 +151,10 @@ namespace IntuneWinPackager
             Controls.Add(layout);
         }
 
-        TextBox AddPathRow(TableLayoutPanel layout, int row, string label, EventHandler browse, Button extra)
+        TextBox AddPathRow(TableLayoutPanel layout, int row, string label, string browseText, EventHandler browse, Button extra)
         {
             var text = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(3, 5, 3, 3) };
-            var browseButton = MakeButton("Browse...", browse);
+            var browseButton = MakeButton(browseText, browse);
 
             layout.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3, 8, 3, 3) }, 0, row);
             layout.Controls.Add(text, 1, row);
@@ -175,26 +187,69 @@ namespace IntuneWinPackager
             }
         }
 
-        void BrowseFolder(TextBox target, string description, bool scanAfter)
+        bool PickInputFolder()
         {
-            using (var dialog = new FolderBrowserDialog { Description = description, ShowNewFolderButton = true })
-            {
-                if (Directory.Exists(target.Text))
-                    dialog.SelectedPath = target.Text;
-                if (dialog.ShowDialog(this) != DialogResult.OK)
-                    return;
+            string folder = FolderPicker.Show(this, "Select the folder that contains your application installers", txtInput.Text.Trim());
+            if (folder == null)
+                return false;
+            SetInputFolder(folder);
+            return true;
+        }
 
-                target.Text = dialog.SelectedPath;
-                if (scanAfter)
-                {
-                    // Suggest an output folder next to the input folder if none is set yet.
-                    if (string.IsNullOrWhiteSpace(txtOutput.Text))
-                        txtOutput.Text = Path.Combine(Path.GetDirectoryName(dialog.SelectedPath) ?? dialog.SelectedPath, "IntuneWin Output");
-                    if (string.IsNullOrWhiteSpace(txtTool.Text))
-                        txtTool.Text = IntuneWinAppUtilRunner.FindTool(dialog.SelectedPath) ?? string.Empty;
-                    ScanInputFolder();
-                }
-            }
+        bool PickOutputFolder()
+        {
+            string current = txtOutput.Text.Trim();
+            if (!Directory.Exists(current))
+                current = txtInput.Text.Trim();
+            string folder = FolderPicker.Show(this, "Select where the .intunewin files should be saved", current);
+            if (folder == null)
+                return false;
+            SetOutputFolder(folder);
+            return true;
+        }
+
+        void SetInputFolder(string folder)
+        {
+            txtInput.Text = folder;
+            if (string.IsNullOrWhiteSpace(txtTool.Text))
+                txtTool.Text = IntuneWinAppUtilRunner.FindTool(folder) ?? string.Empty;
+            ScanInputFolder();
+        }
+
+        void SetOutputFolder(string folder)
+        {
+            txtOutput.Text = folder;
+            Log("Output folder: " + folder);
+        }
+
+        /// <summary>
+        /// Lets a folder be dragged from Explorer onto the control. Dropping a file uses the folder it is in.
+        /// </summary>
+        void EnableFolderDrop(Control control, Action<string> onFolder)
+        {
+            control.AllowDrop = true;
+            control.DragEnter += (s, e) =>
+            {
+                e.Effect = !busy && GetDroppedFolder(e.Data) != null ? DragDropEffects.Link : DragDropEffects.None;
+            };
+            control.DragDrop += (s, e) =>
+            {
+                string folder = GetDroppedFolder(e.Data);
+                if (!busy && folder != null)
+                    onFolder(folder);
+            };
+        }
+
+        static string GetDroppedFolder(IDataObject data)
+        {
+            var paths = data.GetData(DataFormats.FileDrop) as string[];
+            if (paths == null || paths.Length == 0)
+                return null;
+            if (Directory.Exists(paths[0]))
+                return paths[0];
+            if (File.Exists(paths[0]))
+                return Path.GetDirectoryName(paths[0]);
+            return null;
         }
 
         void ScanInputFolder()
@@ -273,8 +328,10 @@ namespace IntuneWinPackager
             }
             if (output.Length == 0)
             {
-                MessageBox.Show(this, "Choose an output folder first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                // No output folder yet, so ask for one now instead of failing.
+                if (!PickOutputFolder())
+                    return;
+                output = txtOutput.Text.Trim();
             }
 
             var selected = lstApps.CheckedItems.Cast<ListViewItem>().Select(i => (SetupFile)i.Tag).ToList();

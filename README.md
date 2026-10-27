@@ -10,9 +10,11 @@ Pick an input folder and an output folder, tick the installers you want, and it 
 1. Open `IntuneWinPackager.sln` in Visual Studio and press F5 (or build it; needs .NET Framework 4.7.2).
 2. **IntuneWinAppUtil.exe** – click *Browse...* and pick the tool. It's found automatically if it sits next to
    `IntuneWinPackager.exe`, in the input folder, or on your `PATH`. *Download...* opens Microsoft's GitHub page.
-3. **Input folder** – the folder that holds your apps. It is scanned for `.msi`, `.exe`, `.ps1`, `.cmd`
-   and `.bat` files (tick *Include subfolders* to search below it).
-4. **Output folder** – where the `.intunewin` files go.
+3. **Input folder** – click *Select folder...* and pick the folder that holds your apps in the Explorer window
+   (or drag the folder from Explorer onto the box or the app list). It is scanned for `.msi`, `.exe`, `.ps1`,
+   `.cmd` and `.bat` files (tick *Include subfolders* to search below it).
+4. **Output folder** – click *Select folder...* and pick where the `.intunewin` files go (you can make a new
+   folder from the Explorer window, or drag one onto the box). If you skip this, you're asked when you compile.
 5. Tick the setup files you want and click **Compile selected**. Progress and the tool's output appear in the log.
 
 Your folders are remembered between runs in `%APPDATA%\IntuneWinPackager\settings.txt`.
