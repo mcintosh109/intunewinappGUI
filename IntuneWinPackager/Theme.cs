@@ -8,22 +8,51 @@ namespace IntuneWinPackager
 {
     /// <summary>
     /// Dark and light colour schemes. WinForms on .NET Framework has no built-in dark mode, so the colours are
-    /// applied to each control by hand, and the title bar, scroll bars and list header are themed through Windows.
+    /// applied to each control by hand, and the title bar and scroll bars are themed through Windows.
+    /// Both modes use the same flat control styles and only swap colours, so nothing changes size or moves
+    /// when switching.
     /// </summary>
     static class Theme
     {
-        public static bool IsDark { get; private set; }
+        class Palette
+        {
+            public Color Back, Surface, Text, MutedText, Border, Button, ButtonHover, ButtonDown, Header, Track;
+        }
 
-        static readonly Color DarkBack = Color.FromArgb(32, 32, 32);
-        static readonly Color DarkSurface = Color.FromArgb(43, 43, 43);
-        static readonly Color DarkText = Color.FromArgb(230, 230, 230);
-        static readonly Color DarkMutedText = Color.FromArgb(160, 160, 160);
-        static readonly Color DarkBorder = Color.FromArgb(70, 70, 70);
-        static readonly Color DarkButton = Color.FromArgb(55, 55, 55);
-        static readonly Color DarkButtonHover = Color.FromArgb(70, 70, 70);
-        static readonly Color DarkHeader = Color.FromArgb(50, 50, 50);
+        static readonly Palette Dark = new Palette
+        {
+            Back = Color.FromArgb(32, 32, 32),
+            Surface = Color.FromArgb(43, 43, 43),
+            Text = Color.FromArgb(230, 230, 230),
+            MutedText = Color.FromArgb(160, 160, 160),
+            Border = Color.FromArgb(70, 70, 70),
+            Button = Color.FromArgb(55, 55, 55),
+            ButtonHover = Color.FromArgb(70, 70, 70),
+            ButtonDown = Color.FromArgb(80, 80, 80),
+            Header = Color.FromArgb(50, 50, 50),
+            Track = Color.FromArgb(43, 43, 43)
+        };
+
+        static readonly Palette Light = new Palette
+        {
+            Back = Color.FromArgb(243, 243, 243),
+            Surface = Color.White,
+            Text = Color.FromArgb(26, 26, 26),
+            MutedText = Color.FromArgb(110, 110, 110),
+            Border = Color.FromArgb(200, 200, 200),
+            Button = Color.FromArgb(253, 253, 253),
+            ButtonHover = Color.FromArgb(229, 241, 251),
+            ButtonDown = Color.FromArgb(204, 228, 247),
+            Header = Color.FromArgb(243, 243, 243),
+            Track = Color.FromArgb(230, 230, 230)
+        };
+
         static readonly Color Accent = Color.FromArgb(0, 103, 192);
         static readonly Color AccentHover = Color.FromArgb(25, 125, 215);
+
+        public static bool IsDark { get; private set; }
+
+        static Palette Colors { get { return IsDark ? Dark : Light; } }
 
         /// <summary>Applies the scheme to the form and every control on it.</summary>
         public static void Apply(Form form, bool dark)
@@ -46,13 +75,10 @@ namespace IntuneWinPackager
         /// <summary>Gives a button the blue "main action" look.</summary>
         public static void StyleAccent(Button button)
         {
-            if (!IsDark)
-                return;
             if (!button.Enabled)
             {
                 // Greyed-out text is unreadable on blue, so a disabled button looks like any other.
-                button.BackColor = DarkButton;
-                button.FlatAppearance.BorderColor = DarkBorder;
+                StyleButton(button);
                 return;
             }
             button.BackColor = Accent;
@@ -62,69 +88,68 @@ namespace IntuneWinPackager
             button.FlatAppearance.MouseDownBackColor = Accent;
         }
 
+        static void StyleButton(Button button)
+        {
+            button.FlatStyle = FlatStyle.Flat;
+            button.BackColor = Colors.Button;
+            button.ForeColor = Colors.Text;
+            button.FlatAppearance.BorderColor = Colors.Border;
+            button.FlatAppearance.MouseOverBackColor = Colors.ButtonHover;
+            button.FlatAppearance.MouseDownBackColor = Colors.ButtonDown;
+        }
+
         static void ApplyTo(Control control)
         {
             if (control is Form || control is Panel || control is Label)
             {
-                control.BackColor = IsDark ? DarkBack : SystemColors.Control;
-                control.ForeColor = IsDark ? DarkText : SystemColors.ControlText;
+                control.BackColor = Colors.Back;
+                control.ForeColor = Colors.Text;
             }
 
             var label = control as Label;
             if (label != null && "muted".Equals(label.Tag))
-                label.ForeColor = IsDark ? DarkMutedText : SystemColors.GrayText;
+                label.ForeColor = Colors.MutedText;
 
             var textBox = control as TextBox;
             if (textBox != null)
             {
-                textBox.BackColor = IsDark ? DarkSurface : SystemColors.Window;
-                textBox.ForeColor = IsDark ? DarkText : SystemColors.WindowText;
-                textBox.BorderStyle = IsDark ? BorderStyle.FixedSingle : BorderStyle.Fixed3D;
+                textBox.BorderStyle = BorderStyle.FixedSingle;
+                textBox.BackColor = Colors.Surface;
+                textBox.ForeColor = Colors.Text;
                 SetDarkScrollBars(textBox, IsDark);
             }
 
             var button = control as Button;
             if (button != null)
-            {
-                if (IsDark)
-                {
-                    button.FlatStyle = FlatStyle.Flat;
-                    button.BackColor = DarkButton;
-                    button.ForeColor = DarkText;
-                    button.FlatAppearance.BorderColor = DarkBorder;
-                    button.FlatAppearance.MouseOverBackColor = DarkButtonHover;
-                    button.FlatAppearance.MouseDownBackColor = DarkBorder;
-                }
-                else
-                {
-                    button.FlatStyle = FlatStyle.Standard;
-                    button.BackColor = SystemColors.Control;
-                    button.ForeColor = SystemColors.ControlText;
-                    button.UseVisualStyleBackColor = true;
-                }
-            }
+                StyleButton(button);
 
             var checkBox = control as CheckBox;
             if (checkBox != null)
             {
-                checkBox.FlatStyle = IsDark ? FlatStyle.Flat : FlatStyle.Standard;
-                checkBox.BackColor = IsDark ? DarkBack : SystemColors.Control;
-                checkBox.ForeColor = IsDark ? DarkText : SystemColors.ControlText;
+                checkBox.FlatStyle = FlatStyle.Flat;
+                checkBox.BackColor = Colors.Back;
+                checkBox.ForeColor = Colors.Text;
             }
 
             var progressBar = control as ThemedProgressBar;
             if (progressBar != null)
-                progressBar.Dark = IsDark;
+            {
+                progressBar.TrackColor = Colors.Track;
+                progressBar.BorderColor = Colors.Border;
+                progressBar.FillColor = Accent;
+                progressBar.Invalidate();
+            }
 
             var listView = control as ListView;
             if (listView != null)
             {
-                listView.BackColor = IsDark ? DarkSurface : SystemColors.Window;
-                listView.ForeColor = IsDark ? DarkText : SystemColors.WindowText;
+                listView.BackColor = Colors.Surface;
+                listView.ForeColor = Colors.Text;
                 // Windows draws grid lines in a fixed light colour, which looks harsh on a dark background.
                 listView.GridLines = !IsDark;
                 PrepareListView(listView);
                 SetDarkScrollBars(listView, IsDark);
+                listView.Invalidate();
             }
 
             foreach (Control child in control.Controls)
@@ -144,13 +169,8 @@ namespace IntuneWinPackager
             listView.DrawSubItem += (s, e) => e.DrawDefault = true;
             listView.DrawColumnHeader += (s, e) =>
             {
-                if (!IsDark)
-                {
-                    e.DrawDefault = true;
-                    return;
-                }
-                using (var back = new SolidBrush(DarkHeader))
-                using (var line = new Pen(DarkBorder))
+                using (var back = new SolidBrush(Colors.Header))
+                using (var line = new Pen(Colors.Border))
                 {
                     e.Graphics.FillRectangle(back, e.Bounds);
                     e.Graphics.DrawLine(line, e.Bounds.Right - 1, e.Bounds.Top, e.Bounds.Right - 1, e.Bounds.Bottom);
@@ -159,7 +179,7 @@ namespace IntuneWinPackager
                 var flags = TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine
                     | (e.Header.TextAlign == HorizontalAlignment.Right ? TextFormatFlags.Right : TextFormatFlags.Left);
                 var textBounds = Rectangle.Inflate(e.Bounds, -6, 0);
-                TextRenderer.DrawText(e.Graphics, e.Header.Text, listView.Font, textBounds, DarkText, flags);
+                TextRenderer.DrawText(e.Graphics, e.Header.Text, listView.Font, textBounds, Colors.Text, flags);
             };
 
             // Owner-drawn list views flicker and leave stale text behind while hovering unless double buffered.
@@ -201,43 +221,25 @@ namespace IntuneWinPackager
     }
 
     /// <summary>
-    /// The Windows progress bar is always light grey and green, so in dark mode it is drawn here instead.
-    /// In light mode Windows draws it as normal.
+    /// The Windows progress bar is always light grey and green, so it is drawn here in the theme's colours.
     /// </summary>
     class ThemedProgressBar : ProgressBar
     {
-        static readonly Color Track = Color.FromArgb(43, 43, 43);
-        static readonly Color Border = Color.FromArgb(70, 70, 70);
-        static readonly Color Fill = Color.FromArgb(0, 103, 192);
+        public Color TrackColor { get; set; } = Color.FromArgb(230, 230, 230);
+        public Color BorderColor { get; set; } = Color.FromArgb(200, 200, 200);
+        public Color FillColor { get; set; } = Color.FromArgb(0, 103, 192);
 
-        bool dark;
-
-        public bool Dark
+        public ThemedProgressBar()
         {
-            get { return dark; }
-            set
-            {
-                if (dark == value)
-                    return;
-                dark = value;
-                SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, value);
-                if (IsHandleCreated)
-                    RecreateHandle();
-                Invalidate();
-            }
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            if (!dark)
-            {
-                base.OnPaint(e);
-                return;
-            }
             var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
-            using (var track = new SolidBrush(Track))
-            using (var border = new Pen(Border))
-            using (var fill = new SolidBrush(Fill))
+            using (var track = new SolidBrush(TrackColor))
+            using (var border = new Pen(BorderColor))
+            using (var fill = new SolidBrush(FillColor))
             {
                 e.Graphics.FillRectangle(track, bounds);
                 int range = Maximum - Minimum;
