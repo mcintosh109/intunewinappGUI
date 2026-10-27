@@ -5,6 +5,18 @@ A small Windows Forms front end for Microsoft's **IntuneWinAppUtil.exe**
 Pick an input folder and an output folder, tick the installers you want, and it builds a
 `.intunewin` package for each one so you can upload it as a Win32 app in Intune.
 
+## Download
+
+Grab `IntuneWinPackager.zip` from the [Releases](../../releases) page, unzip it anywhere and run
+`IntuneWinPackager.exe`. It's a single program that needs nothing installed beyond Windows 10/11
+(which already include .NET Framework 4.8). Put `IntuneWinAppUtil.exe` in the same folder and it's
+found automatically.
+
+Every push to `main` is also built by GitHub Actions; the build is attached to each run on the
+[Actions](../../actions) page.
+
+To publish a new release, push a version tag, e.g. `git tag v1.1.0 && git push origin v1.1.0`.
+
 ## Usage
 
 1. Open `IntuneWinPackager.sln` in Visual Studio and press F5 (or build it; needs .NET Framework 4.7.2).

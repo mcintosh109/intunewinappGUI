@@ -1,0 +1,42 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Build Release
+        run: msbuild IntuneWinPackager.sln /p:Configuration=Release /m /v:minimal
+
+      - name: Collect files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item IntuneWinPackager/bin/Release/IntuneWinPackager.exe, IntuneWinPackager/bin/Release/IntuneWinPackager.exe.config dist/
+          Copy-Item README.md dist/
+          Compress-Archive -Path dist/* -DestinationPath IntuneWinPackager.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IntuneWinPackager
+          path: dist/
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: IntuneWinPackager.zip
+          generate_release_notes: true
