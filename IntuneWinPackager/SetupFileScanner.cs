@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace IntuneWinPackager
 {
@@ -32,6 +33,20 @@ namespace IntuneWinPackager
     {
         public static readonly string[] SetupExtensions = { ".msi", ".exe", ".ps1", ".cmd", ".bat" };
 
+        /// <summary>
+        /// Files that are never apps: this program itself (whatever it's been renamed to) and the packaging tool.
+        /// </summary>
+        static readonly string[] ExcludedFileNames = GetExcludedFileNames();
+
+        static string[] GetExcludedFileNames()
+        {
+            var names = new List<string> { "IntuneWinPackager.exe", IntuneWinAppUtilRunner.ToolFileName };
+            var self = Assembly.GetEntryAssembly();
+            if (self != null && !string.IsNullOrEmpty(self.Location))
+                names.Add(Path.GetFileName(self.Location));
+            return names.ToArray();
+        }
+
         public static List<SetupFile> Scan(string inputFolder, bool includeSubfolders)
         {
             string root = Path.GetFullPath(inputFolder).TrimEnd(Path.DirectorySeparatorChar);
@@ -39,6 +54,7 @@ namespace IntuneWinPackager
 
             return Directory.EnumerateFiles(root, "*.*", option)
                 .Where(f => SetupExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
+                .Where(f => !ExcludedFileNames.Contains(Path.GetFileName(f), StringComparer.OrdinalIgnoreCase))
                 .Select(f =>
                 {
                     string folder = Path.GetDirectoryName(f);

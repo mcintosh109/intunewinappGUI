@@ -25,7 +25,8 @@ and click **Publish release**. The build runs and attaches `IntuneWinPackager.zi
    `IntuneWinPackager.exe`, in the input folder, or on your `PATH`. *Download...* opens Microsoft's GitHub page.
 3. **Input folder** – click *Select folder...* and pick the folder that holds your apps in the Explorer window
    (or drag the folder from Explorer onto the box or the app list). It is scanned for `.msi`, `.exe`, `.ps1`,
-   `.cmd` and `.bat` files (tick *Include subfolders* to search below it).
+   `.cmd` and `.bat` files (tick *Include subfolders* to search below it). `IntuneWinPackager.exe` itself and
+   `IntuneWinAppUtil.exe` are always left out of the list, so it's fine to keep them in the input folder.
 4. **Output folder** – click *Select folder...* and pick where the `.intunewin` files go (you can make a new
    folder from the Explorer window, or drag one onto the box). If you skip this, you're asked when you compile.
 5. Tick the setup files you want (or tick **Select all**) and click **Compile selected**. Each ticked app is packaged
