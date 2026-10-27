@@ -132,7 +132,9 @@ namespace IntuneWinPackager
             layout.Controls.Add(lstApps, 0, 4);
             layout.SetColumnSpan(lstApps, 4);
             EnableFolderDrop(lstApps, SetInputFolder);
-            lockWhileBusy.Add(lstApps);
+            // The list isn't disabled while packaging (Windows would grey it out and ignore the dark colours),
+            // so tick changes are refused instead.
+            lstApps.ItemCheck += (s, e) => { if (busy) e.NewValue = e.CurrentValue; };
 
             // Row 5: compile button and progress
             var actions = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 3, Margin = new Padding(0) };
@@ -143,7 +145,7 @@ namespace IntuneWinPackager
             btnCompile.Font = new Font(Font, FontStyle.Bold);
             btnCompile.Padding = new Padding(8, 2, 8, 2);
             btnCompile.EnabledChanged += (s, e) => Theme.StyleAccent(btnCompile);
-            progress = new ProgressBar { Dock = DockStyle.Fill, Margin = new Padding(8, 6, 3, 6) };
+            progress = new ThemedProgressBar { Dock = DockStyle.Fill, Margin = new Padding(8, 6, 3, 6) };
             actions.Controls.Add(btnCompile, 0, 0);
             actions.Controls.Add(progress, 1, 0);
             chkDarkMode = new CheckBox { Text = "Dark mode", AutoSize = true, Anchor = AnchorStyles.Right, Margin = new Padding(12, 6, 3, 3) };
@@ -480,7 +482,14 @@ namespace IntuneWinPackager
         {
             busy = isBusy;
             foreach (Control c in lockWhileBusy)
-                c.Enabled = !isBusy;
+            {
+                // Disabled text boxes are drawn grey by Windows whatever their colours, so make them read-only instead.
+                var textBox = c as TextBox;
+                if (textBox != null)
+                    textBox.ReadOnly = isBusy;
+                else
+                    c.Enabled = !isBusy;
+            }
             UseWaitCursor = isBusy;
             if (isBusy)
             {

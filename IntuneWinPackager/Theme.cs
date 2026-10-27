@@ -112,6 +112,10 @@ namespace IntuneWinPackager
                 checkBox.ForeColor = IsDark ? DarkText : SystemColors.ControlText;
             }
 
+            var progressBar = control as ThemedProgressBar;
+            if (progressBar != null)
+                progressBar.Dark = IsDark;
+
             var listView = control as ListView;
             if (listView != null)
             {
@@ -192,6 +196,57 @@ namespace IntuneWinPackager
             }
             catch (Exception ex) when (ex is DllNotFoundException || ex is EntryPointNotFoundException)
             {
+            }
+        }
+    }
+
+    /// <summary>
+    /// The Windows progress bar is always light grey and green, so in dark mode it is drawn here instead.
+    /// In light mode Windows draws it as normal.
+    /// </summary>
+    class ThemedProgressBar : ProgressBar
+    {
+        static readonly Color Track = Color.FromArgb(43, 43, 43);
+        static readonly Color Border = Color.FromArgb(70, 70, 70);
+        static readonly Color Fill = Color.FromArgb(0, 103, 192);
+
+        bool dark;
+
+        public bool Dark
+        {
+            get { return dark; }
+            set
+            {
+                if (dark == value)
+                    return;
+                dark = value;
+                SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, value);
+                if (IsHandleCreated)
+                    RecreateHandle();
+                Invalidate();
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            if (!dark)
+            {
+                base.OnPaint(e);
+                return;
+            }
+            var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
+            using (var track = new SolidBrush(Track))
+            using (var border = new Pen(Border))
+            using (var fill = new SolidBrush(Fill))
+            {
+                e.Graphics.FillRectangle(track, bounds);
+                int range = Maximum - Minimum;
+                if (range > 0 && Value > Minimum)
+                {
+                    int width = (int)((long)(bounds.Width - 1) * (Value - Minimum) / range);
+                    e.Graphics.FillRectangle(fill, 1, 1, width, bounds.Height - 1);
+                }
+                e.Graphics.DrawRectangle(border, bounds);
             }
         }
     }
